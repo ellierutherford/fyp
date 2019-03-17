@@ -116,8 +116,8 @@ public void computeDocumentAssociationScoresForQuery(org.bson.Document dbEntryFo
 		   int numOfSlices = 0;
 		   int sizeOfDoc = 0;
 		   if(!idEntry.contains("DOC")) {
-			   numOfSlices = (int) slice.get("currentNumberOfSlices");
-			   sizeOfDoc = (int) slice.get("doc_size");
+			   numOfSlices = (Integer) slice.get("currentNumberOfSlices");
+			   sizeOfDoc = (Integer) slice.get("doc_size");
 		   }
 		   
 		   /*if(numOfSlices==3) {
@@ -229,7 +229,7 @@ public void computeDocumentAssociationScoresForQuery(org.bson.Document dbEntryFo
 	}
 	
 	//method code from https://dzone.com/articles/how-to-sort-a-map-by-value-in-java-8
-    public static HashMap<String, Double> sortByValue(HashMap<String, Double> slices) {
+    /*public static HashMap<String, Double> sortByValue(HashMap<String, Double> slices) {
 
         return slices.entrySet()
 
@@ -239,7 +239,7 @@ public void computeDocumentAssociationScoresForQuery(org.bson.Document dbEntryFo
 
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
 
-    }
+    }*/
 
    private static String getDocIdForSlice(String sliceKey) {
 	   int end = sliceKey.indexOf("#");
@@ -262,7 +262,7 @@ public void computeDocumentAssociationScoresForQuery(org.bson.Document dbEntryFo
 		
 		FileWriter fileWriter = new FileWriter(outFile, true);
 		BufferedWriter bufferedFileWriter = new BufferedWriter(fileWriter);
-		weightedScoresForDocsAssociatedWithQuery = sortByValue(weightedScoresForDocsAssociatedWithQuery);
+		//weightedScoresForDocsAssociatedWithQuery = sortByValue(weightedScoresForDocsAssociatedWithQuery);
 		int counter = 1000;
 		for (HashMap.Entry<String, Double> documentInSet : weightedScoresForDocsAssociatedWithQuery.entrySet()) {
 			//if(counter==0)
