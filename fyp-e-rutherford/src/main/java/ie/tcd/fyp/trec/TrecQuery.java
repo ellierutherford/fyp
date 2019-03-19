@@ -14,6 +14,7 @@ import edu.wiki.search.MongoESASearcher;
 import ie.adaptcentre.tcd.phd.nlp.pooling.TermsPool;
 import ie.adaptcentre.tcd.phd.nlp.segmenter.Slice;
 import ie.adaptcentre.tcd.phd.nlp.segmenter.StringProcessing;
+import ie.tcd.fyp.retrieval.DBSlice;
 
 
 /**
@@ -23,6 +24,12 @@ import ie.adaptcentre.tcd.phd.nlp.segmenter.StringProcessing;
  */
 public class TrecQuery {
 	
+	boolean normalizePassages = false;
+	boolean useOneGranLevel = false;
+	boolean useFilterGranLevel = false;
+	boolean useDocs = false;
+	boolean useAllPassages = false;
+	int granularityLevelForPassages;
 	int id;
 	String title;
 	String description;
@@ -30,10 +37,9 @@ public class TrecQuery {
 	String chosenQueryContent;
 	String trecCollection;
 	MongoESASearcher esa;
+	public String fileToPrintTo;
 	public Slice queryAsSlice;
 	public HashMap<String, Double> weightedScoresForDocsAssociatedWithQuery = new HashMap<String, Double>();
-	HashMap<String,Double> scoresForNormalizationDocs = new HashMap<String,Double>();
-	double scoresForNormalizationQueries=0;
 	//the key string in the map is the doc id, the key string in the second map is the slice id and the double is the slice score
 	Map<String,Map<String,Double>> slices = new HashMap<String,Map<String,Double>>();
 	
@@ -54,7 +60,7 @@ public class TrecQuery {
 		this.description = description;
 		this.narrative = narrative;
 		this.trecCollection = trecCollection;
-		setQueryContentToTitle();//change this depending on what content you want in your query
+		setQueryContentToDesc();//change this depending on what content you want in your query
 		this.queryAsSlice = convertQueryToSlice();
 	}
 	
@@ -68,6 +74,22 @@ public class TrecQuery {
 	
 	public void setQueryContentToNarr() {
 		this.chosenQueryContent = this.narrative;
+	}
+	
+	public void normalizePassages() {
+		normalizePassages = true;
+	}
+	
+	public void oneGranLevel(int granularityLevelForPassages) {
+		useOneGranLevel = true;
+		this.granularityLevelForPassages = granularityLevelForPassages;
+		System.out.println("the slices present at the gran. level s.t the number of slices is " + 
+				this.granularityLevelForPassages + " were used in retrieval." + " the slices were normalized: "
+				+ this.normalizePassages);
+	}
+	
+	public void multipleGranLevels() {
+		useFilterGranLevel = true;
 	}
 	
 
@@ -103,68 +125,67 @@ public class TrecQuery {
 	
 	}
 	
-public void computeDocumentAssociationScoresForQuery(org.bson.Document dbEntryForConcept, Entry<Integer, Double> conceptFromQueryCentroid) {
-		
-	   ArrayList<org.bson.Document> sliceList =  (ArrayList<org.bson.Document>) dbEntryForConcept.get("slices");
-	   double queryRelevanceScore = conceptFromQueryCentroid.getValue();
-	   scoresForNormalizationQueries+=(queryRelevanceScore*queryRelevanceScore);
-
-	   for (org.bson.Document slice : sliceList) {
-		  
-		   String idEntry = (String) slice.get("id");
-		   Double scoreEntry = (Double) slice.get("score");
-		   int numOfSlices = 0;
-		   int sizeOfDoc = 0;
-		   if(!idEntry.contains("DOC")) {
-			   numOfSlices = (Integer) slice.get("currentNumberOfSlices");
-			   sizeOfDoc = (Integer) slice.get("doc_size");
-		   }
-		   
-		   /*if(numOfSlices==3) {
-			   dealWithSlices(idEntry,scoreEntry, conceptFromQueryCentroid);
-		   }
-		   //TODO another method here for experimenting with document length & no. of passages
-		   else if(idEntry.contains("DOC")) {
-			   dealWithDocs(idEntry,scoreEntry,conceptFromQueryCentroid);
-		   }  */
-		   if(idEntry.contains("DOC")) {
-			   dealWithDocs(idEntry,scoreEntry,conceptFromQueryCentroid);
-		   }  
-		  
-		   else {
-			   //if(numOfSlices==2)
-				   //dealWithSlices(idEntry,scoreEntry, conceptFromQueryCentroid);
-		   }
-	   }
-	   
-	   //normalizeAllScores();
-	   
+	//these methods are for the various experiments - which docs/passages do we take into account and how
+	public void docsOnly(String idEntry, double scoreEntry, double queryConceptScore) {
+		if(idEntry.contains("DOC"))
+			dealWithDocs(idEntry,scoreEntry,queryConceptScore);	
 	}
-
-	private void normalizeAllScores() {
-		for (Map.Entry<String,Double> document : weightedScoresForDocsAssociatedWithQuery.entrySet()) {
-			normalizeScoreForDoc(document.getKey());
+	
+	public void allPassages(DBSlice sliceEntry,double queryConceptScore) {
+		if(!sliceEntry.getId().contains("DOC")) {
+			dealWithSlices(sliceEntry,queryConceptScore,sliceEntry.getSizeOfDoc());
+		}	
+	}
+	
+	public void passagesAtSetGranLevel(DBSlice sliceEntry, double queryConceptScore, int granLevel) {
+		if(!sliceEntry.getId().contains("DOC")) {
+			slicesAtOneGranularityLevel(sliceEntry,queryConceptScore,granLevel);
+		}		
+	}
+	
+	public void passagesAtMultipleGranLevels(DBSlice sliceEntry, double queryConceptScore) {
+		if(!sliceEntry.getId().contains("DOC")) {
+			slicesAtAllGranularityLevels(sliceEntry,queryConceptScore);
 		}
 	}
+		
 	
-	private void normalizePassages() {
+	private void slicesAtOneGranularityLevel(DBSlice slice,double queryConceptScore,int granularityLevel) {
+		if(slice.getNumOfSlices()==granularityLevel) {
+		   dealWithSlices(slice,queryConceptScore,slice.getNumOfSlices());
+	   }
 		
 	}
-	
-	//not entirely sure about this ....
-	private void normalizeScoreForDoc(String docId) {
-		double normOfDoc = Math.sqrt(weightedScoresForDocsAssociatedWithQuery.get(docId));
-		double normOfQuery = Math.sqrt(scoresForNormalizationQueries);
-		double normFactor = normOfDoc * normOfQuery;
-		weightedScoresForDocsAssociatedWithQuery.put(docId,weightedScoresForDocsAssociatedWithQuery.get(docId)/normFactor); 
+
+	private void slicesAtAllGranularityLevels(DBSlice slice,double queryConceptScore) {
+		int sizeOfDoc = slice.getSizeOfDoc();
+		int numOfSlices = slice.getNumOfSlices();
+		
+		if(sizeOfDoc>700) {
+			if(numOfSlices<=10)
+				dealWithSlices(slice,queryConceptScore,numOfSlices);
+		}
+		else if(sizeOfDoc<700 && sizeOfDoc>=400) {
+			if(numOfSlices<=6)
+				dealWithSlices(slice,queryConceptScore,numOfSlices);
+		}
+		else if(sizeOfDoc<400 && sizeOfDoc>=100) {
+			if(numOfSlices<=3)
+				dealWithSlices(slice,queryConceptScore,numOfSlices);
+		}
+		else if(sizeOfDoc<100 && sizeOfDoc>0) {
+			if(numOfSlices==2)
+				dealWithSlices(slice,queryConceptScore,numOfSlices);
+		}
+
 	}
 
-	private void dealWithDocs(String idEntry, Double scoreEntry, Entry<Integer, Double> conceptFromQueryCentroid) {
+	private void dealWithDocs(String idEntry, double scoreEntry, double queryConceptScore) {
 		String docId = getDocId(idEntry);
-		Double entireDocScore = scoreEntry/**scoreEntry*/;
-		//addScoreToQueryMap(docId,entireDocScore,scoresForNormalizationDocs);
-		entireDocScore = entireDocScore*conceptFromQueryCentroid.getValue(); 
+		Double entireDocScore = scoreEntry;
+		entireDocScore = entireDocScore*queryConceptScore; 
 		addScoreToQueryMap(docId, entireDocScore,weightedScoresForDocsAssociatedWithQuery);
+		
 	}
 	
 	private void addScoreToQueryMap(String docId, Double score, HashMap<String,Double> mapToAddTo) {
@@ -177,12 +198,14 @@ public void computeDocumentAssociationScoresForQuery(org.bson.Document dbEntryFo
 		}	
 	}
 
-	private void dealWithSlices(String idEntry, Double scoreEntry, Entry<Integer, Double> queryScoreWithConcept) {
-		String docId = getDocIdForSlice(idEntry); 
-		String sliceId = idEntry;
-		Double sliceScore = scoreEntry;
-		sliceScore = sliceScore * queryScoreWithConcept.getValue();
+	private void dealWithSlices(DBSlice slice, double queryConceptScore, double normalizationFactor) {
+		String docId = getDocIdForSlice(slice.getId()); 
+		String sliceId = slice.getId();
+		Double sliceScore = slice.getScoreEntry();
+		sliceScore = sliceScore * queryConceptScore;
 		Map<String,Double> slicesWithScores = (Map<String,Double>) slices.get(docId);
+		if(this.normalizePassages)
+			sliceScore = sliceScore/normalizationFactor;
 		if(slicesWithScores!=null) {
 			slicesWithScores.put(sliceId,sliceScore);
 		}
@@ -194,6 +217,7 @@ public void computeDocumentAssociationScoresForQuery(org.bson.Document dbEntryFo
 	
 	}
 	
+	//TODO: redo this method
 	//this will add only the best slice for each doc to the map 
 	/*public void addBestSlicesToMap() {
 		//iterate thru slice map
@@ -210,14 +234,15 @@ public void computeDocumentAssociationScoresForQuery(org.bson.Document dbEntryFo
 		
 	}*/
 	
-	public void rankDocs() {
+	public void rankBySumOfPassages() {
 		for (Map.Entry<String, Map<String,Double>> documentEntry : slices.entrySet()) {
 			Map <String,Double> slicesInDoc = documentEntry.getValue();
 			double scoreForPassage = addUpSliceScores(slicesInDoc);
 			String docId = documentEntry.getKey();
 			addScoreToQueryMap(docId,scoreForPassage,weightedScoresForDocsAssociatedWithQuery);//removed normalization, see notes
 			}
-		
+		//System.out.println("A summation of all passage scores were used to rank documents "
+			//	+ "according to their combined passage score");
 	}
 	
 	public static double addUpSliceScores(Map<String,Double> sliceScoresForDoc) {
@@ -225,9 +250,10 @@ public void computeDocumentAssociationScoresForQuery(org.bson.Document dbEntryFo
 		for (Entry<String, Double> entry : sliceScoresForDoc.entrySet()) {
 			score += entry.getValue();
 		}	
-		return score;
+		return score; 
 	}
 	
+	//TODO: this one too
 	//method code from https://dzone.com/articles/how-to-sort-a-map-by-value-in-java-8
     /*public static HashMap<String, Double> sortByValue(HashMap<String, Double> slices) {
 
@@ -258,9 +284,9 @@ public void computeDocumentAssociationScoresForQuery(org.bson.Document dbEntryFo
 		
 	
    	//question about hashmap ordering - is this actually printing the top 1000 or A one thousand?
-	public void printDocAssociationScoresForQueryToFile(String outFile) throws IOException {
+	public void printDocAssociationScoresForQueryToFile() throws IOException {
 		
-		FileWriter fileWriter = new FileWriter(outFile, true);
+		FileWriter fileWriter = new FileWriter(fileToPrintTo, true);
 		BufferedWriter bufferedFileWriter = new BufferedWriter(fileWriter);
 		//weightedScoresForDocsAssociatedWithQuery = sortByValue(weightedScoresForDocsAssociatedWithQuery);
 		int counter = 1000;
