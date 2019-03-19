@@ -4,8 +4,12 @@ import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.Map.Entry;
@@ -217,22 +221,17 @@ public class TrecQuery {
 	
 	}
 	
-	//TODO: redo this method
-	//this will add only the best slice for each doc to the map 
-	/*public void addBestSlicesToMap() {
+	public void addBestSlicesToMap() {
 		//iterate thru slice map
 		//sorts each doc entry in reverse order - the first element is the highest passage score for the doc
 		for (Map.Entry<String, Map<String,Double>> entry : slices.entrySet()) {
 			Map <String,Double> slicesInDoc = entry.getValue();
-			slicesInDoc = sortByValue(slicesInDoc);
-			Entry<String,Double> bestSlice = slicesInDoc.entrySet().stream().findFirst().get();
+			Entry<String,Double> bestSlice = maxValueInMap(slicesInDoc);
 			String docId = entry.getKey();
-			//multiply by 7 for a different weighting scheme
-		
-			addScoreToQueryMap(docId,bestSlice.getValue());
+			addScoreToQueryMap(docId,bestSlice.getValue(),weightedScoresForDocsAssociatedWithQuery);
 		}	
 		
-	}*/
+	}
 	
 	public void rankBySumOfPassages() {
 		for (Map.Entry<String, Map<String,Double>> documentEntry : slices.entrySet()) {
@@ -253,30 +252,27 @@ public class TrecQuery {
 		return score; 
 	}
 	
-	//TODO: this one too
-	//method code from https://dzone.com/articles/how-to-sort-a-map-by-value-in-java-8
-    /*public static HashMap<String, Double> sortByValue(HashMap<String, Double> slices) {
+	//method code modified from https://www.mkyong.com/java/how-to-sort-a-map-in-java/
+	public static Entry<String,Double> maxValueInMap(Map<String, Double> slicesInDoc) {
 
-        return slices.entrySet()
-
-                .stream()
-
-                .sorted((Map.Entry.<String, Double>comparingByValue().reversed()))
-
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
-
-    }*/
+		Map.Entry<String, Double> maxEntry = null;
+		
+		for (Map.Entry<String, Double> entry : slicesInDoc.entrySet())
+		{
+		    if (maxEntry == null || entry.getValue().compareTo(maxEntry.getValue()) > 0)
+		    {
+		        maxEntry = entry;
+		    }
+		}
+		return maxEntry;
+    }
 
    private static String getDocIdForSlice(String sliceKey) {
 	   int end = sliceKey.indexOf("#");
 	   return sliceKey.substring(0,end);
    }
    
-   /*private static String getSliceId(String sliceKey) {
-	   int end = sliceKey.indexOf("iter");
-	   return sliceKey.substring(0,end);
-   }*/
-   
+ 
    private static String getDocId(String sliceKey){
 	   int end = sliceKey.indexOf("_DOC");
 	   return sliceKey.substring(0,end);

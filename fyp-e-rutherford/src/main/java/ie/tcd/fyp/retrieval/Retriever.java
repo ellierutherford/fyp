@@ -91,6 +91,8 @@ public class Retriever {
 		//5: docs + passages using filter method = d_p_f
 		//6: passages only (gran = 2) = p_g_2
 		//7: docs + passages, (gran = 2) = d_p_g_2
+		//8: docs + best passage (out of all passages) = d_b_p_all_p
+		//9: docs + best passage (out of all passages, normalized) = d_b_p_all_p_norm
 		
 		experiments.add(0,"d");
 		experiments.add(1,"all_p_norm");
@@ -100,10 +102,10 @@ public class Retriever {
 		experiments.add(5,"d_p_f");
 		experiments.add(6,"p_g_2");
 		experiments.add(7,"d_p_g_2");
+		experiments.add(8,"d_b_p_all_p");
+		experiments.add(9,"d_b_p_all_p_norm");
 		
 		//TODO write methods for the following experiments
-		//eighth exp: docs + best passage (out of all passages) d_b_p_all_p
-		//ninth exp: docs + best passage (out of all passages, normalized) d_b_p_all_p_norm
 		//tenth exp: docs + best passage (out of passages with gran=2) d_b_p_g_2
 		//eleventh exp: docs + best passages (out of all passages using filter method) d_b_p_f
 		//twelvth exp: passages only (using filter method, normalized according to number of passages) p_f_norm
@@ -200,6 +202,16 @@ public class Retriever {
 					docsOnly(sliceList, currentQuery, queryConceptScore);
 					passagesAtSetGranLevel(sliceList,currentQuery,queryConceptScore,2);
 					currentQuery.rankBySumOfPassages();
+					break;
+				case "d_b_p_all_p":
+					docsOnly(sliceList, currentQuery, queryConceptScore);
+					allPassages(sliceList,currentQuery,queryConceptScore,false);
+					currentQuery.addBestSlicesToMap();
+					break;
+				case "d_b_p_all_p_norm":
+					docsOnly(sliceList, currentQuery, queryConceptScore);
+					allPassages(sliceList,currentQuery,queryConceptScore,true);
+					currentQuery.addBestSlicesToMap();
 					break;
 				}
 					
