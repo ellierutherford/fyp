@@ -8,12 +8,14 @@ public class DBSlice {
 	int numOfSlices = 0;
 	int sizeOfDoc = 0; //in sentences
 	boolean normalize;
+	int sizeOfSlice=0;
 	
-	public DBSlice (String id, double scoreEntry, int numOfSlices, int sizeOfDoc) {
+	public DBSlice (String id, double scoreEntry, int numOfSlices, int sizeOfDoc, int sizeOfSlice) {
 		this.id = id;
 		this.scoreEntry = scoreEntry;
 		this.numOfSlices = numOfSlices;
 		this.sizeOfDoc = sizeOfDoc;
+		this.sizeOfSlice = sizeOfSlice;
 		this.normalize = false;
 	}
 	
@@ -39,6 +41,10 @@ public class DBSlice {
 	
 	public void setNormalization(boolean norm) {
 		this.normalize = norm;
+	}
+	
+	public int getSizeOfSlice() {
+		return this.sizeOfSlice;
 	}
 	
 	

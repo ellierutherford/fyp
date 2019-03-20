@@ -68,6 +68,12 @@ public class TrecQuery {
 		this.queryAsSlice = convertQueryToSlice();
 	}
 	
+	public void cleanQuery() {
+		this.weightedScoresForDocsAssociatedWithQuery = new HashMap<String,Double>();
+		this.slices = new HashMap<String,Map<String,Double>>();
+		this.normalizePassages = false;
+	}
+	
 	public void setQueryContentToTitle() {
 		this.chosenQueryContent = this.title;
 	}
@@ -123,7 +129,7 @@ public class TrecQuery {
 		} catch (ClassNotFoundException e) {
 			e.printStackTrace();
 		}
-		esa.getConceptVector(querySlice,termsPoolInQuery);
+		esa.getConceptVector(querySlice,termsPoolInQuery,20);//limit for number of concepts in query vec
 		
 		return querySlice;
 	
@@ -137,7 +143,9 @@ public class TrecQuery {
 	
 	public void allPassages(DBSlice sliceEntry,double queryConceptScore) {
 		if(!sliceEntry.getId().contains("DOC")) {
-			dealWithSlices(sliceEntry,queryConceptScore,sliceEntry.getSizeOfDoc());
+			//is this the right normalization factor?
+			if(sliceEntry.getSizeOfSlice()>=1 && sliceEntry.getSizeOfSlice()<=3)
+				dealWithSlices(sliceEntry,queryConceptScore,sliceEntry.getSizeOfDoc());
 		}	
 	}
 	
@@ -164,23 +172,62 @@ public class TrecQuery {
 	private void slicesAtAllGranularityLevels(DBSlice slice,double queryConceptScore) {
 		int sizeOfDoc = slice.getSizeOfDoc();
 		int numOfSlices = slice.getNumOfSlices();
+		int sizeOfSlice = slice.getSizeOfSlice();
 		
-		if(sizeOfDoc>700) {
-			if(numOfSlices<=10)
+		if(sizeOfSlice>=1 && sizeOfSlice<=4)
+			dealWithSlices(slice,queryConceptScore,numOfSlices);
+		/*if(sizeOfDoc>1000) {
+			if(numOfSlices<=800 && numOfSlices>=700)
 				dealWithSlices(slice,queryConceptScore,numOfSlices);
 		}
-		else if(sizeOfDoc<700 && sizeOfDoc>=400) {
-			if(numOfSlices<=6)
+		else if(sizeOfDoc<1000 && sizeOfDoc>=900) {
+			if(numOfSlices<600 && numOfSlices>=500)
 				dealWithSlices(slice,queryConceptScore,numOfSlices);
 		}
-		else if(sizeOfDoc<400 && sizeOfDoc>=100) {
-			if(numOfSlices<=3)
+		else if(sizeOfDoc<900 && sizeOfDoc>=800) {
+			if(numOfSlices<=500 && numOfSlices>=400)
 				dealWithSlices(slice,queryConceptScore,numOfSlices);
 		}
-		else if(sizeOfDoc<100 && sizeOfDoc>0) {
-			if(numOfSlices==2)
+		else if(sizeOfDoc<800 && sizeOfDoc>=700) {
+			if(numOfSlices<=400 && numOfSlices>=300)
 				dealWithSlices(slice,queryConceptScore,numOfSlices);
 		}
+		else if(sizeOfDoc<700 && sizeOfDoc>=600) {
+			if(numOfSlices<=350 && numOfSlices>=250)
+				dealWithSlices(slice,queryConceptScore,numOfSlices);
+		}
+		else if(sizeOfDoc<600 && sizeOfDoc>=500) {
+			if(numOfSlices<=300 && numOfSlices>=200)
+				dealWithSlices(slice,queryConceptScore,numOfSlices);
+		}
+		else if(sizeOfDoc<500 && sizeOfDoc>=400) {
+			if(numOfSlices<=250 && numOfSlices>=150)
+				dealWithSlices(slice,queryConceptScore,numOfSlices);
+		}
+		else if(sizeOfDoc<400 && sizeOfDoc>=300) {
+			if(numOfSlices<=200 && numOfSlices>=100)
+				dealWithSlices(slice,queryConceptScore,numOfSlices);
+		}
+		else if(sizeOfDoc<300 && sizeOfDoc>=200) {
+			if(numOfSlices<=150 && numOfSlices>=100)
+				dealWithSlices(slice,queryConceptScore,numOfSlices);
+		}
+		else if(sizeOfDoc<200 && sizeOfDoc>=100) {
+			if(numOfSlices<=100 && numOfSlices>=50)
+				dealWithSlices(slice,queryConceptScore,numOfSlices);
+		}
+		else if(sizeOfDoc<100 && sizeOfDoc>=50) {
+			if(numOfSlices<=50 && numOfSlices>=10)
+				dealWithSlices(slice,queryConceptScore,numOfSlices);
+		}
+		else if(sizeOfDoc<80 && sizeOfDoc>=40) {
+			if(numOfSlices<=10 && numOfSlices>=5)
+				dealWithSlices(slice,queryConceptScore,numOfSlices);
+		}
+		else if(sizeOfDoc<40) {
+			if(numOfSlices<=5)
+				dealWithSlices(slice,queryConceptScore,numOfSlices);
+		}*/
 
 	}
 
@@ -233,6 +280,10 @@ public class TrecQuery {
 		
 	}
 	
+	public void finalizeScores() {
+		
+	}
+	
 	public void rankBySumOfPassages() {
 		for (Map.Entry<String, Map<String,Double>> documentEntry : slices.entrySet()) {
 			Map <String,Double> slicesInDoc = documentEntry.getValue();
@@ -278,26 +329,46 @@ public class TrecQuery {
 	   return sliceKey.substring(0,end);
    }
 		
+   //code for sort method from https://www.mkyong.com/java/how-to-sort-a-map-in-java/
+   public static Map<String,Double> sortMap(HashMap<String,Double> mapToSort){
+	   List<Map.Entry<String,Double>> entries = new ArrayList<>(mapToSort.entrySet());
+	   Collections.sort(entries, new Comparator<Map.Entry<String, Double>>() {
+           public int compare(Map.Entry<String, Double> o1,
+                              Map.Entry<String, Double> o2) {
+               return (o2.getValue()).compareTo(o1.getValue());
+           }
+       });
 	
-   	//question about hashmap ordering - is this actually printing the top 1000 or A one thousand?
+	   Map<String, Double> sortedMap = new LinkedHashMap<String, Double>();
+       for (Map.Entry<String, Double> entry : entries) {
+           sortedMap.put(entry.getKey(), entry.getValue());
+       }
+       
+       return sortedMap;
+   }
+	
 	public void printDocAssociationScoresForQueryToFile() throws IOException {
 		
 		FileWriter fileWriter = new FileWriter(fileToPrintTo, true);
 		BufferedWriter bufferedFileWriter = new BufferedWriter(fileWriter);
-		//weightedScoresForDocsAssociatedWithQuery = sortByValue(weightedScoresForDocsAssociatedWithQuery);
 		int counter = 1000;
-		for (HashMap.Entry<String, Double> documentInSet : weightedScoresForDocsAssociatedWithQuery.entrySet()) {
-			//if(counter==0)
-				//break;
+		
+		//sort score map by value
+		LinkedHashMap<String,Double> linkedMap = (LinkedHashMap<String, Double>) sortMap(weightedScoresForDocsAssociatedWithQuery);
+		
+		for (Entry<String, Double> documentInSet : linkedMap.entrySet()) {
+			if(counter==0)
+				break;
 			String docId = documentInSet.getKey();
 			double docQueryScore = documentInSet.getValue();
 			
 			bufferedFileWriter.write(this.id + " 0 " + docId + " 0 " + docQueryScore + " 0 ");
 			bufferedFileWriter.newLine();
-			//counter--;
+			counter--;
 		}
 		bufferedFileWriter.flush();
 		bufferedFileWriter.close();
 		
 	}
+
 }

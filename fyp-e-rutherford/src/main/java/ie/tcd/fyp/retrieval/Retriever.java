@@ -104,25 +104,24 @@ public class Retriever {
 		experiments.add(7,"d_p_g_2");
 		experiments.add(8,"d_b_p_all_p");
 		experiments.add(9,"d_b_p_all_p_norm");
+		experiments.add(10,"all_p");
+		experiments.add(11,"d_b_p_p_f");
 		
 		//TODO write methods for the following experiments
 		//tenth exp: docs + best passage (out of passages with gran=2) d_b_p_g_2
 		//eleventh exp: docs + best passages (out of all passages using filter method) d_b_p_f
 		//twelvth exp: passages only (using filter method, normalized according to number of passages) p_f_norm
-		//experiments.add(9,"d_b_p_all_p");
-		//experiments.add(10,"d_b_p_all_p_norm");
-		//experiments.add(11,"d_b_p_g_2");
-		//experiments.add(12,"d_b_p_f");
 		
-		
+		//for every query, run all experiments
 		for(int i=0;i<experiments.size();i++) {
 			String expId = experiments.get(i);
-			
 			for(TrecQuery q : queries) {
-				q.fileToPrintTo = "/home/eleanor/exp_results/" + expId; //we set this too many times..
+				q.fileToPrintTo = "/home/eleanor/exp_results/" + expId + "_run5"; //we set this too many times..
 				rankQuery(q, expId); //does this belong here?
+				q.cleanQuery();//reset slice and doc score maps (+ normalization flag) for next experiment
 			}
 		}
+		
 	}
 	
 	//helper function to ensure we access the same database as the one used for indexing
@@ -174,51 +173,68 @@ public class Retriever {
 					break;
 				case "all_p_norm" :
 					allPassages(sliceList,currentQuery,queryConceptScore,true);
-					currentQuery.rankBySumOfPassages();
 					break;
 				case "d_all_p_norm":
 					docsOnly(sliceList, currentQuery, queryConceptScore);
 					allPassages(sliceList,currentQuery,queryConceptScore,true);
-					currentQuery.rankBySumOfPassages();
 					break;
 				case "p_f" :
 					filteredPassages(sliceList,currentQuery,queryConceptScore,false);
-					currentQuery.rankBySumOfPassages();
 					break;
 				case "p_f_norm":
 					filteredPassages(sliceList,currentQuery,queryConceptScore,true);
-					currentQuery.rankBySumOfPassages();
 					break;
 				case "d_p_f" :
 					docsOnly(sliceList, currentQuery, queryConceptScore);
 					allPassages(sliceList,currentQuery,queryConceptScore,true);
-					currentQuery.rankBySumOfPassages();
 					break;
 				case "p_g_2" :
 					passagesAtSetGranLevel(sliceList,currentQuery,queryConceptScore,2);
-					currentQuery.rankBySumOfPassages();
 					break;
 				case "d_p_g_2" :
 					docsOnly(sliceList, currentQuery, queryConceptScore);
 					passagesAtSetGranLevel(sliceList,currentQuery,queryConceptScore,2);
-					currentQuery.rankBySumOfPassages();
 					break;
 				case "d_b_p_all_p":
 					docsOnly(sliceList, currentQuery, queryConceptScore);
 					allPassages(sliceList,currentQuery,queryConceptScore,false);
-					currentQuery.addBestSlicesToMap();
 					break;
 				case "d_b_p_all_p_norm":
 					docsOnly(sliceList, currentQuery, queryConceptScore);
 					allPassages(sliceList,currentQuery,queryConceptScore,true);
-					currentQuery.addBestSlicesToMap();
+					break;
+				case "all_p":
+					allPassages(sliceList,currentQuery,queryConceptScore,false);
+					break;
+				case "d_b_p_p_f":
+					docsOnly(sliceList, currentQuery, queryConceptScore);
+					filteredPassages(sliceList,currentQuery,queryConceptScore,false);
 					break;
 				}
-					
 			}
 		}
-		//once we've dealt with all concepts in the query vector, print the scores for each doc
+		
+		//once we've dealt with all concepts in the query vector, we can calculate the final scores and 
+		//print the scores for each doc
 		//this will print to a file with its experiment id as the filename 
+		switch(expId) {
+		case "all_p_norm":
+		case "d_all_p_norm":
+		case "p_f" :
+		case "p_f_norm" :
+		case "d_p_f" :
+		case "p_g_2" :
+		case "d_p_g_2" :
+		case "all_p":
+			currentQuery.rankBySumOfPassages();
+			break;
+		case "d_b_p_all_p" :
+		case "d_b_p_all_p_norm" :
+		case "d_b_p_p_f" :
+			currentQuery.addBestSlicesToMap();
+			break;
+		}
+		
 		currentQuery.printDocAssociationScoresForQueryToFile();
 	}
 	
@@ -245,11 +261,13 @@ public class Retriever {
 			   Double scoreEntry = (Double) slice.get("score");
 			   int numOfSlices = 0;
 			   int sizeOfDoc = 0; //in sentences
+			   int sizeOfSlice = 0;
 			   if(!idEntry.contains("DOC")) {
 				   numOfSlices = (Integer) slice.get("currentNumberOfSlices");
-				   sizeOfDoc = (Integer) slice.get("doc_size");   
+				   sizeOfDoc = (Integer) slice.get("doc_size");  
+				   sizeOfSlice = (Integer) slice.get("size");
 			   }
-			   DBSlice sliceEntry = new DBSlice(idEntry,scoreEntry,numOfSlices,sizeOfDoc);
+			   DBSlice sliceEntry = new DBSlice(idEntry,scoreEntry,numOfSlices,sizeOfDoc,sizeOfSlice);
 		
 			   if(norm) {
 				   currentQuery.normalizePassages();
@@ -267,11 +285,13 @@ public class Retriever {
 			   Double scoreEntry = (Double) slice.get("score");
 			   int numOfSlices = 0;
 			   int sizeOfDoc = 0; //in sentences
+			   int sizeOfSlice =0;
 			   if(!idEntry.contains("DOC")) {
 				   numOfSlices = (Integer) slice.get("currentNumberOfSlices");
-				   sizeOfDoc = (Integer) slice.get("doc_size");   
+				   sizeOfDoc = (Integer) slice.get("doc_size");
+				   sizeOfSlice = (Integer) slice.get("size");
 			   }
-			   DBSlice sliceEntry = new DBSlice(idEntry,scoreEntry,numOfSlices,sizeOfDoc);
+			   DBSlice sliceEntry = new DBSlice(idEntry,scoreEntry,numOfSlices,sizeOfDoc,sizeOfSlice);
 			   if(norm) {
 				   //is this the correct method of normalization?
 				   currentQuery.normalizePassages();
@@ -288,11 +308,13 @@ public class Retriever {
 			   Double scoreEntry = (Double) slice.get("score");
 			   int numOfSlices = 0;
 			   int sizeOfDoc = 0; //in sentences
+			   int sizeOfSlice =0;
 			   if(!idEntry.contains("DOC")) {
 				   numOfSlices = (Integer) slice.get("currentNumberOfSlices");
 				   sizeOfDoc = (Integer) slice.get("doc_size");   
+				   sizeOfSlice = (Integer) slice.get("size");
 			   }
-			   DBSlice sliceEntry = new DBSlice(idEntry,scoreEntry,numOfSlices,sizeOfDoc);
+			   DBSlice sliceEntry = new DBSlice(idEntry,scoreEntry,numOfSlices,sizeOfDoc,sizeOfSlice);
 			   currentQuery.passagesAtSetGranLevel(sliceEntry,queryConceptScore,granLevel);
 		}
 	}
