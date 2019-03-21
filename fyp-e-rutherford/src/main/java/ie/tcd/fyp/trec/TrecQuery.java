@@ -64,7 +64,7 @@ public class TrecQuery {
 		this.description = description;
 		this.narrative = narrative;
 		this.trecCollection = trecCollection;
-		setQueryContentToDesc();//change this depending on what content you want in your query
+		setQueryContentToTitle();//change this depending on what content you want in your query
 		this.queryAsSlice = convertQueryToSlice();
 	}
 	
@@ -143,92 +143,27 @@ public class TrecQuery {
 	
 	public void allPassages(DBSlice sliceEntry,double queryConceptScore) {
 		if(!sliceEntry.getId().contains("DOC")) {
-			//is this the right normalization factor?
-			if(sliceEntry.getSizeOfSlice()>=1 && sliceEntry.getSizeOfSlice()<=3)
-				dealWithSlices(sliceEntry,queryConceptScore,sliceEntry.getSizeOfDoc());
+			dealWithSlices(sliceEntry,queryConceptScore,sliceEntry.getSizeOfDoc());
 		}	
 	}
 	
 	public void passagesAtSetGranLevel(DBSlice sliceEntry, double queryConceptScore, int granLevel) {
 		if(!sliceEntry.getId().contains("DOC")) {
-			slicesAtOneGranularityLevel(sliceEntry,queryConceptScore,granLevel);
+			//where granLevel is the number of slices in the doc at a level of granularity e.g. if
+			//granLevel = 2, that means there are two slices for the doc at this level
+			if(sliceEntry.getNumOfSlices()==granLevel) {
+				   dealWithSlices(sliceEntry,queryConceptScore,sliceEntry.getNumOfSlices());
+			}
 		}		
 	}
 	
 	public void passagesAtMultipleGranLevels(DBSlice sliceEntry, double queryConceptScore) {
+		int numOfSlices = sliceEntry.getNumOfSlices();
+		int sizeOfSlice = sliceEntry.getSizeOfSlice();
 		if(!sliceEntry.getId().contains("DOC")) {
-			slicesAtAllGranularityLevels(sliceEntry,queryConceptScore);
+			if(sizeOfSlice>=1 && sizeOfSlice<=3)
+				dealWithSlices(sliceEntry,queryConceptScore,1);
 		}
-	}
-		
-	
-	private void slicesAtOneGranularityLevel(DBSlice slice,double queryConceptScore,int granularityLevel) {
-		if(slice.getNumOfSlices()==granularityLevel) {
-		   dealWithSlices(slice,queryConceptScore,slice.getNumOfSlices());
-	   }
-		
-	}
-
-	private void slicesAtAllGranularityLevels(DBSlice slice,double queryConceptScore) {
-		int sizeOfDoc = slice.getSizeOfDoc();
-		int numOfSlices = slice.getNumOfSlices();
-		int sizeOfSlice = slice.getSizeOfSlice();
-		
-		if(sizeOfSlice>=1 && sizeOfSlice<=4)
-			dealWithSlices(slice,queryConceptScore,numOfSlices);
-		/*if(sizeOfDoc>1000) {
-			if(numOfSlices<=800 && numOfSlices>=700)
-				dealWithSlices(slice,queryConceptScore,numOfSlices);
-		}
-		else if(sizeOfDoc<1000 && sizeOfDoc>=900) {
-			if(numOfSlices<600 && numOfSlices>=500)
-				dealWithSlices(slice,queryConceptScore,numOfSlices);
-		}
-		else if(sizeOfDoc<900 && sizeOfDoc>=800) {
-			if(numOfSlices<=500 && numOfSlices>=400)
-				dealWithSlices(slice,queryConceptScore,numOfSlices);
-		}
-		else if(sizeOfDoc<800 && sizeOfDoc>=700) {
-			if(numOfSlices<=400 && numOfSlices>=300)
-				dealWithSlices(slice,queryConceptScore,numOfSlices);
-		}
-		else if(sizeOfDoc<700 && sizeOfDoc>=600) {
-			if(numOfSlices<=350 && numOfSlices>=250)
-				dealWithSlices(slice,queryConceptScore,numOfSlices);
-		}
-		else if(sizeOfDoc<600 && sizeOfDoc>=500) {
-			if(numOfSlices<=300 && numOfSlices>=200)
-				dealWithSlices(slice,queryConceptScore,numOfSlices);
-		}
-		else if(sizeOfDoc<500 && sizeOfDoc>=400) {
-			if(numOfSlices<=250 && numOfSlices>=150)
-				dealWithSlices(slice,queryConceptScore,numOfSlices);
-		}
-		else if(sizeOfDoc<400 && sizeOfDoc>=300) {
-			if(numOfSlices<=200 && numOfSlices>=100)
-				dealWithSlices(slice,queryConceptScore,numOfSlices);
-		}
-		else if(sizeOfDoc<300 && sizeOfDoc>=200) {
-			if(numOfSlices<=150 && numOfSlices>=100)
-				dealWithSlices(slice,queryConceptScore,numOfSlices);
-		}
-		else if(sizeOfDoc<200 && sizeOfDoc>=100) {
-			if(numOfSlices<=100 && numOfSlices>=50)
-				dealWithSlices(slice,queryConceptScore,numOfSlices);
-		}
-		else if(sizeOfDoc<100 && sizeOfDoc>=50) {
-			if(numOfSlices<=50 && numOfSlices>=10)
-				dealWithSlices(slice,queryConceptScore,numOfSlices);
-		}
-		else if(sizeOfDoc<80 && sizeOfDoc>=40) {
-			if(numOfSlices<=10 && numOfSlices>=5)
-				dealWithSlices(slice,queryConceptScore,numOfSlices);
-		}
-		else if(sizeOfDoc<40) {
-			if(numOfSlices<=5)
-				dealWithSlices(slice,queryConceptScore,numOfSlices);
-		}*/
-
 	}
 
 	private void dealWithDocs(String idEntry, double scoreEntry, double queryConceptScore) {
@@ -268,9 +203,8 @@ public class TrecQuery {
 	
 	}
 	
-	public void addBestSlicesToMap() {
-		//iterate thru slice map
-		//sorts each doc entry in reverse order - the first element is the highest passage score for the doc
+	public void addBestSliceToMap() {
+		
 		for (Map.Entry<String, Map<String,Double>> entry : slices.entrySet()) {
 			Map <String,Double> slicesInDoc = entry.getValue();
 			Entry<String,Double> bestSlice = maxValueInMap(slicesInDoc);
@@ -280,19 +214,14 @@ public class TrecQuery {
 		
 	}
 	
-	public void finalizeScores() {
-		
-	}
 	
 	public void rankBySumOfPassages() {
 		for (Map.Entry<String, Map<String,Double>> documentEntry : slices.entrySet()) {
 			Map <String,Double> slicesInDoc = documentEntry.getValue();
 			double scoreForPassage = addUpSliceScores(slicesInDoc);
 			String docId = documentEntry.getKey();
-			addScoreToQueryMap(docId,scoreForPassage,weightedScoresForDocsAssociatedWithQuery);//removed normalization, see notes
+			addScoreToQueryMap(docId,scoreForPassage,weightedScoresForDocsAssociatedWithQuery);
 			}
-		//System.out.println("A summation of all passage scores were used to rank documents "
-			//	+ "according to their combined passage score");
 	}
 	
 	public static double addUpSliceScores(Map<String,Double> sliceScoresForDoc) {

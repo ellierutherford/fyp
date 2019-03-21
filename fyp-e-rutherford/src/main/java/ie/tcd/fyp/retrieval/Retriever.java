@@ -82,41 +82,29 @@ public class Retriever {
 		ArrayList<TrecQuery> queries = processQueryFile();
 		ArrayList<String> experiments = new ArrayList<String>();
 		
-		//all following queries are title only, with 20 components in query vector
-		//0: docs only = d
-		//1: all passages only (normalized according to doc size) = all_p_norm
-		//2: docs + all passages (normalized according to doc size) = d_all_p_norm
-		//3: passages only (using filter method) = p_f (so added up)
-		//4: passages only (using filter method) = p_f_norm (so added up & normalized)
-		//5: docs + passages using filter method = d_p_f
-		//6: passages only (gran = 2) = p_g_2
-		//7: docs + passages, (gran = 2) = d_p_g_2
-		//8: docs + best passage (out of all passages) = d_b_p_all_p
-		//9: docs + best passage (out of all passages, normalized) = d_b_p_all_p_norm
 		
-		experiments.add(0,"d");
-		experiments.add(1,"all_p_norm");
-		experiments.add(2,"d_all_p_norm");
-		experiments.add(3,"p_f");
-		experiments.add(4,"p_f_norm");
-		experiments.add(5,"d_p_f");
-		experiments.add(6,"p_g_2");
-		experiments.add(7,"d_p_g_2");
-		experiments.add(8,"d_b_p_all_p");
-		experiments.add(9,"d_b_p_all_p_norm");
-		experiments.add(10,"all_p");
-		experiments.add(11,"d_b_p_p_f");
-		
-		//TODO write methods for the following experiments
-		//tenth exp: docs + best passage (out of passages with gran=2) d_b_p_g_2
-		//eleventh exp: docs + best passages (out of all passages using filter method) d_b_p_f
-		//twelvth exp: passages only (using filter method, normalized according to number of passages) p_f_norm
+		experiments.add(0,"all_p_b_p_norm");
+		experiments.add(1,"all_p_b_p");
+		experiments.add(2,"d");
+		experiments.add(3,"all_p_norm");
+		experiments.add(4,"d_all_p_norm");
+		experiments.add(5,"p_f");
+		experiments.add(6,"p_f_norm");
+		experiments.add(7,"d_p_f");
+		experiments.add(8,"p_g");
+		experiments.add(9,"d_p_g");
+		experiments.add(10,"d_b_p_all_p");
+		experiments.add(11,"d_b_p_all_p_norm");
+		experiments.add(12,"all_p");
+		experiments.add(13,"d_b_p_p_f");
+		experiments.add(14,"d_b_p_p_g");
+	
 		
 		//for every query, run all experiments
 		for(int i=0;i<experiments.size();i++) {
 			String expId = experiments.get(i);
 			for(TrecQuery q : queries) {
-				q.fileToPrintTo = "/home/eleanor/exp_results/" + expId + "_run5"; //we set this too many times..
+				q.fileToPrintTo = "/home/eleanor/exp_results/run_1/" + expId; //we set this too many times..
 				rankQuery(q, expId); //does this belong here?
 				q.cleanQuery();//reset slice and doc score maps (+ normalization flag) for next experiment
 			}
@@ -186,14 +174,14 @@ public class Retriever {
 					break;
 				case "d_p_f" :
 					docsOnly(sliceList, currentQuery, queryConceptScore);
-					allPassages(sliceList,currentQuery,queryConceptScore,true);
+					filteredPassages(sliceList,currentQuery,queryConceptScore,false);
 					break;
-				case "p_g_2" :
-					passagesAtSetGranLevel(sliceList,currentQuery,queryConceptScore,2);
+				case "p_g" :
+					passagesAtSetGranLevel(sliceList,currentQuery,queryConceptScore,6);
 					break;
-				case "d_p_g_2" :
+				case "d_p_g" :
 					docsOnly(sliceList, currentQuery, queryConceptScore);
-					passagesAtSetGranLevel(sliceList,currentQuery,queryConceptScore,2);
+					passagesAtSetGranLevel(sliceList,currentQuery,queryConceptScore,6);
 					break;
 				case "d_b_p_all_p":
 					docsOnly(sliceList, currentQuery, queryConceptScore);
@@ -210,6 +198,16 @@ public class Retriever {
 					docsOnly(sliceList, currentQuery, queryConceptScore);
 					filteredPassages(sliceList,currentQuery,queryConceptScore,false);
 					break;
+				case "all_p_b_p_norm":
+					allPassages(sliceList,currentQuery,queryConceptScore,true);
+					break;
+				case "all_p_b_p":
+					allPassages(sliceList,currentQuery,queryConceptScore,false);
+					break;
+				case "d_b_p_p_g" :
+					docsOnly(sliceList, currentQuery, queryConceptScore);
+					passagesAtSetGranLevel(sliceList,currentQuery,queryConceptScore,6);
+					break;
 				}
 			}
 		}
@@ -223,15 +221,18 @@ public class Retriever {
 		case "p_f" :
 		case "p_f_norm" :
 		case "d_p_f" :
-		case "p_g_2" :
-		case "d_p_g_2" :
+		case "p_g" :
+		case "d_p_g" :
 		case "all_p":
 			currentQuery.rankBySumOfPassages();
 			break;
 		case "d_b_p_all_p" :
 		case "d_b_p_all_p_norm" :
 		case "d_b_p_p_f" :
-			currentQuery.addBestSlicesToMap();
+		case "all_p_b_p_norm":
+		case "all_p_b_p":
+		case "d_b_p_p_g":
+			currentQuery.addBestSliceToMap();
 			break;
 		}
 		
