@@ -116,7 +116,8 @@ public class TrecQuery {
 		ArrayList<String> queryAsStrings = sp.splitTextIntoSentences(this.chosenQueryContent); 
 		ArrayList<ArrayList<String>> querySentencesAsTerms = sp.buildSentencesAsTermsForQuery(queryAsStrings);
 		ArrayList<String> uniqueTermsInQuery = sp.getDocumentUniqueTerms(querySentencesAsTerms);
-		
+		if(uniqueTermsInQuery==null)
+			System.out.println("stop");
 		TermsPool termsPoolInQuery = new TermsPool(uniqueTermsInQuery);
 		ArrayList <String> terms = sp.getTerms(this.chosenQueryContent);
 		

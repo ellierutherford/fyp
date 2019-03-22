@@ -45,6 +45,14 @@ public class TrecQueryParser {
 			else if(currentLine.contains("<title>")) {
 				title = currentLine.substring((currentLine.indexOf("<title>")+7),currentLine.length());
 				currentLine = reader.readLine();
+				if(title.contentEquals("")) {
+					while(!currentLine.contains("<desc>")) {
+						if(!currentLine.contains("<title>"))
+							title += currentLine;
+						currentLine = reader.readLine();
+					}
+				}
+					
 			}
 			else if(currentLine.contains("<desc>")) {
 				while(!currentLine.contains("<narr>")) {
