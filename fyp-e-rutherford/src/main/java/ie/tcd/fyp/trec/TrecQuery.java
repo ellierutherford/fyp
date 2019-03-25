@@ -190,17 +190,22 @@ public class TrecQuery {
 		String sliceId = slice.getId();
 		Double sliceScore = slice.getScoreEntry();
 		sliceScore = sliceScore * queryConceptScore;
-		Map<String,Double> slicesWithScores = (Map<String,Double>) slices.get(docId);
+		Map<String,Double> slicesForDoc = (Map<String,Double>) slices.get(docId);
 		if(this.normalizePassages)
 			sliceScore = sliceScore/normalizationFactor;
-		if(slicesWithScores!=null) {
-			slicesWithScores.put(sliceId,sliceScore);
+		if(slicesForDoc!=null) {
+			Double currentScoreForPassage = slicesForDoc.get(sliceId);
+			//if the slice already has an entry in the map
+			if(currentScoreForPassage!=null)
+			    slicesForDoc.put(sliceId, currentScoreForPassage+sliceScore);
+			else 
+			    slicesForDoc.put(sliceId,sliceScore);
 		}
 		else {
-			slicesWithScores = new HashMap<String, Double>();
-			slicesWithScores.put(sliceId,sliceScore);
+			slicesForDoc = new HashMap<String, Double>();
+			slicesForDoc.put(sliceId,sliceScore);
 		}
-		slices.put(docId,slicesWithScores);
+		slices.put(docId,slicesForDoc);
 	
 	}
 	
