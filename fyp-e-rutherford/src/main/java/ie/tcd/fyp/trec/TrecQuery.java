@@ -29,10 +29,10 @@ import ie.tcd.fyp.retrieval.DBSlice;
 public class TrecQuery {
 	
 	boolean normalizePassages = false;
-	boolean useOneGranLevel = false;
+	/*boolean useOneGranLevel = false;
 	boolean useFilterGranLevel = false;
 	boolean useDocs = false;
-	boolean useAllPassages = false;
+	boolean useAllPassages = false;*/
 	int granularityLevelForPassages;
 	int id;
 	String title;
@@ -90,7 +90,7 @@ public class TrecQuery {
 		normalizePassages = true;
 	}
 	
-	public void oneGranLevel(int granularityLevelForPassages) {
+	/*public void oneGranLevel(int granularityLevelForPassages) {
 		useOneGranLevel = true;
 		this.granularityLevelForPassages = granularityLevelForPassages;
 		System.out.println("the slices present at the gran. level s.t the number of slices is " + 
@@ -100,7 +100,7 @@ public class TrecQuery {
 	
 	public void multipleGranLevels() {
 		useFilterGranLevel = true;
-	}
+	}*/
 	
 
 	/**
@@ -160,10 +160,49 @@ public class TrecQuery {
 	
 	public void passagesAtMultipleGranLevels(DBSlice sliceEntry, double queryConceptScore) {
 		int numOfSlices = sliceEntry.getNumOfSlices();
-		int sizeOfSlice = sliceEntry.getSizeOfSlice();
+		//int sizeOfSlice = sliceEntry.getSizeOfSlice();
+		int sizeOfDoc = sliceEntry.getSizeOfDoc();
 		if(!sliceEntry.getId().contains("DOC")) {
-			if(sizeOfSlice>=1 && sizeOfSlice<=3)
-				dealWithSlices(sliceEntry,queryConceptScore,1);
+			if(sizeOfDoc>1000) {
+				if(numOfSlices<100 && numOfSlices>=90)
+					dealWithSlices(sliceEntry,queryConceptScore,1);
+			}
+			else if(sizeOfDoc<=1000 & sizeOfDoc>800) {
+				if(numOfSlices<90 && numOfSlices>=80)
+					dealWithSlices(sliceEntry,queryConceptScore,1);
+			}
+			else if(sizeOfDoc<=800 & sizeOfDoc>600) {
+				if(numOfSlices<80 && numOfSlices>=70)
+					dealWithSlices(sliceEntry,queryConceptScore,1);
+			}
+			else if(sizeOfDoc<=700 & sizeOfDoc>500) {
+				if(numOfSlices<70 && numOfSlices>=60)
+					dealWithSlices(sliceEntry,queryConceptScore,1);
+			}
+			else if(sizeOfDoc<=600 & sizeOfDoc>400) {
+				if(numOfSlices<60 && numOfSlices>=50)
+					dealWithSlices(sliceEntry,queryConceptScore,1);
+			}
+			else if(sizeOfDoc<=500 & sizeOfDoc>300) {
+				if(numOfSlices<50 && numOfSlices>=40)
+					dealWithSlices(sliceEntry,queryConceptScore,1);
+			}
+			else if(sizeOfDoc<=400 & sizeOfDoc>200) {
+				if(numOfSlices<40 && numOfSlices>=30)
+					dealWithSlices(sliceEntry,queryConceptScore,1);
+			}
+			else if(sizeOfDoc<=300 & sizeOfDoc>100) {
+				if(numOfSlices<30 && numOfSlices>=20)
+					dealWithSlices(sliceEntry,queryConceptScore,1);
+			}
+			else if(sizeOfDoc<=200 & sizeOfDoc>50) {
+				if(numOfSlices<20 && numOfSlices>=10)
+					dealWithSlices(sliceEntry,queryConceptScore,1);
+			}
+			else if(sizeOfDoc<=50) {
+				if(numOfSlices<10)
+					dealWithSlices(sliceEntry,queryConceptScore,1);
+			}
 		}
 	}
 

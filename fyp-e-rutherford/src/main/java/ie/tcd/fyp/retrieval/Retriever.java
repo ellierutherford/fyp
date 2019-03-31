@@ -104,7 +104,7 @@ public class Retriever {
 		for(int i=0;i<experiments.size();i++) {
 			String expId = experiments.get(i);
 			for(TrecQuery q : queries) {
-				q.fileToPrintTo = "/home/eleanor/exp_results/run_1/" + expId; //we set this too many times..
+				q.fileToPrintTo = "/home/eleanor/exp_results/run_3/" + expId; //we set this too many times..
 				rankQuery(q, expId); //does this belong here?
 				q.cleanQuery();//reset slice and doc score maps (+ normalization flag) for next experiment
 			}
@@ -177,11 +177,11 @@ public class Retriever {
 					filteredPassages(sliceList,currentQuery,queryConceptScore,false);
 					break;
 				case "p_g" :
-					passagesAtSetGranLevel(sliceList,currentQuery,queryConceptScore,6);
+					passagesAtSetGranLevel(sliceList,currentQuery,queryConceptScore,3);
 					break;
 				case "d_p_g" :
 					docsOnly(sliceList, currentQuery, queryConceptScore);
-					passagesAtSetGranLevel(sliceList,currentQuery,queryConceptScore,6);
+					passagesAtSetGranLevel(sliceList,currentQuery,queryConceptScore,3);
 					break;
 				case "d_b_p_all_p":
 					docsOnly(sliceList, currentQuery, queryConceptScore);
