@@ -1,0 +1,2 @@
+db.concepts.update( {}, { $pull: {slices: {id : {$regex: /LA010589-0159\#.*/} } } }, {multi : true})
+
