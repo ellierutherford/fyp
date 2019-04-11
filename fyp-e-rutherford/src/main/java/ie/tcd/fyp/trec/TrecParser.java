@@ -73,6 +73,9 @@ String fileToBeRead;
 				else if(currentTag.contentEquals("</TEXT>")) {
 					textContent = contentBetweenTags;
 				}
+				else if(currentLine.contains("<GRAPHIC>")) {
+					textContent += getStringBetweenTags(getCurrentTagContent("</GRAPHIC>",currentLine),"<GRAPHIC>","</GRAPHIC>");
+				}
 				else if(currentTag.contentEquals("</DOC>")) {
 					TrecDocument d = new TrecDocument(docId,textContent);
 					docs.add(d);
