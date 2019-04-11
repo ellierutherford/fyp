@@ -8,10 +8,8 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import java.util.Map.Entry;
 
 import edu.wiki.search.MongoESASearcher;
@@ -29,10 +27,6 @@ import ie.tcd.fyp.retrieval.DBSlice;
 public class TrecQuery {
 	
 	boolean normalizePassages = false;
-	/*boolean useOneGranLevel = false;
-	boolean useFilterGranLevel = false;
-	boolean useDocs = false;
-	boolean useAllPassages = false;*/
 	int granularityLevelForPassages;
 	int id;
 	String title;
@@ -86,21 +80,24 @@ public class TrecQuery {
 		this.chosenQueryContent = this.narrative;
 	}
 	
+	public void setQueryContentToTitlePlusDesc() {
+		this.chosenQueryContent = this.title;
+		this.chosenQueryContent += this.description;
+	}
+	
+	public void setQueryContentToTitlePlusDescPlusNarr() {
+		this.chosenQueryContent = this.title;
+		this.chosenQueryContent += this.description;
+		this.chosenQueryContent += this.narrative;
+	}
+	
+	public String getQueryContent() {
+		return this.chosenQueryContent;
+	}
+	
 	public void normalizePassages() {
 		normalizePassages = true;
 	}
-	
-	/*public void oneGranLevel(int granularityLevelForPassages) {
-		useOneGranLevel = true;
-		this.granularityLevelForPassages = granularityLevelForPassages;
-		System.out.println("the slices present at the gran. level s.t the number of slices is " + 
-				this.granularityLevelForPassages + " were used in retrieval." + " the slices were normalized: "
-				+ this.normalizePassages);
-	}
-	
-	public void multipleGranLevels() {
-		useFilterGranLevel = true;
-	}*/
 	
 
 	/**
@@ -136,83 +133,6 @@ public class TrecQuery {
 	
 	}
 	
-	//these methods are for the various experiments - which docs/passages do we take into account and how
-	public void docsOnly(String idEntry, double scoreEntry, double queryConceptScore) {
-		if(idEntry.contains("DOC"))
-			dealWithDocs(idEntry,scoreEntry,queryConceptScore);	
-	}
-	
-	public void allPassages(DBSlice sliceEntry,double queryConceptScore) {
-		if(!sliceEntry.getId().contains("DOC")) {
-			dealWithSlices(sliceEntry,queryConceptScore,sliceEntry.getSizeOfDoc());
-		}	
-	}
-	
-	public void passagesAtSetGranLevel(DBSlice sliceEntry, double queryConceptScore, int granLevel) {
-		if(!sliceEntry.getId().contains("DOC")) {
-			//where granLevel is the number of slices in the doc at a level of granularity e.g. if
-			//granLevel = 2, that means there are two slices for the doc at this level
-			if(sliceEntry.getNumOfSlices()==granLevel) {
-				   dealWithSlices(sliceEntry,queryConceptScore,sliceEntry.getNumOfSlices());
-			}
-		}		
-	}
-	
-	public void passagesAtMultipleGranLevels(DBSlice sliceEntry, double queryConceptScore) {
-		int numOfSlices = sliceEntry.getNumOfSlices();
-		//int sizeOfSlice = sliceEntry.getSizeOfSlice();
-		int sizeOfDoc = sliceEntry.getSizeOfDoc();
-		if(!sliceEntry.getId().contains("DOC")) {
-			if(sizeOfDoc>1000) {
-				if(numOfSlices<100 && numOfSlices>=90)
-					dealWithSlices(sliceEntry,queryConceptScore,1);
-			}
-			else if(sizeOfDoc<=1000 & sizeOfDoc>800) {
-				if(numOfSlices<90 && numOfSlices>=80)
-					dealWithSlices(sliceEntry,queryConceptScore,1);
-			}
-			else if(sizeOfDoc<=800 & sizeOfDoc>600) {
-				if(numOfSlices<80 && numOfSlices>=70)
-					dealWithSlices(sliceEntry,queryConceptScore,1);
-			}
-			else if(sizeOfDoc<=700 & sizeOfDoc>500) {
-				if(numOfSlices<70 && numOfSlices>=60)
-					dealWithSlices(sliceEntry,queryConceptScore,1);
-			}
-			else if(sizeOfDoc<=600 & sizeOfDoc>400) {
-				if(numOfSlices<60 && numOfSlices>=50)
-					dealWithSlices(sliceEntry,queryConceptScore,1);
-			}
-			else if(sizeOfDoc<=500 & sizeOfDoc>300) {
-				if(numOfSlices<50 && numOfSlices>=40)
-					dealWithSlices(sliceEntry,queryConceptScore,1);
-			}
-			else if(sizeOfDoc<=400 & sizeOfDoc>200) {
-				if(numOfSlices<40 && numOfSlices>=30)
-					dealWithSlices(sliceEntry,queryConceptScore,1);
-			}
-			else if(sizeOfDoc<=300 & sizeOfDoc>100) {
-				if(numOfSlices<30 && numOfSlices>=20)
-					dealWithSlices(sliceEntry,queryConceptScore,1);
-			}
-			else if(sizeOfDoc<=200 & sizeOfDoc>50) {
-				if(numOfSlices<20 && numOfSlices>=10)
-					dealWithSlices(sliceEntry,queryConceptScore,1);
-			}
-			else if(sizeOfDoc<=50) {
-				if(numOfSlices<10)
-					dealWithSlices(sliceEntry,queryConceptScore,1);
-			}
-		}
-	}
-
-	private void dealWithDocs(String idEntry, double scoreEntry, double queryConceptScore) {
-		String docId = getDocId(idEntry);
-		Double entireDocScore = scoreEntry;
-		entireDocScore = entireDocScore*queryConceptScore; 
-		addScoreToQueryMap(docId, entireDocScore,weightedScoresForDocsAssociatedWithQuery);
-		
-	}
 	
 	private void addScoreToQueryMap(String docId, Double score, HashMap<String,Double> mapToAddTo) {
 		if(mapToAddTo.containsKey(docId)) {
@@ -248,17 +168,11 @@ public class TrecQuery {
 	
 	}
 	
-	public void addBestSliceToMap() {
-		
-		for (Map.Entry<String, Map<String,Double>> entry : slices.entrySet()) {
-			Map <String,Double> slicesInDoc = entry.getValue();
-			Entry<String,Double> bestSlice = maxValueInMap(slicesInDoc);
-			String docId = entry.getKey();
-			addScoreToQueryMap(docId,bestSlice.getValue(),weightedScoresForDocsAssociatedWithQuery);
+	public void allPassages(DBSlice sliceEntry,double queryConceptScore) {
+		if(!sliceEntry.getId().contains("DOC")) {
+			dealWithSlices(sliceEntry,queryConceptScore,sliceEntry.getSizeOfDoc());
 		}	
-		
 	}
-	
 	
 	public void rankBySumOfPassages() {
 		for (Map.Entry<String, Map<String,Double>> documentEntry : slices.entrySet()) {
@@ -321,9 +235,9 @@ public class TrecQuery {
        return sortedMap;
    }
 	
-	public void printDocAssociationScoresForQueryToFile() throws IOException {
+	public void printDocAssociationScoresForQueryToFile(String outFile) throws IOException {
 		
-		FileWriter fileWriter = new FileWriter(fileToPrintTo, true);
+		FileWriter fileWriter = new FileWriter(outFile,true);
 		BufferedWriter bufferedFileWriter = new BufferedWriter(fileWriter);
 		int counter = 1000;
 		

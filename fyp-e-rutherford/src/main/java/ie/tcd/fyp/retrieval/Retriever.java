@@ -33,6 +33,7 @@ public class Retriever {
 	String queryFilePath;
 	String dbName;
 	String documentCollectionPath;
+	static String outFile;
 	boolean index;
 	
 	/**
@@ -48,11 +49,12 @@ public class Retriever {
 	 *A CHTSDocumentIndexer is created based on the params specified above. 
 	 */
 	
-	public Retriever(String queryFilePath, String dbName, String documentCollectionPath, String index) {
+	public Retriever(String queryFilePath, String dbName, String documentCollectionPath, String outFile, String index) {
 		this.queryFilePath = queryFilePath;
 		this.dbName = dbName;
 		this.documentCollectionPath = documentCollectionPath;
 		this.indexer = new CHTSDocumentIndexer(this.dbName,this.documentCollectionPath);
+		this.outFile = outFile;
 		if(index.contentEquals("true"))
 			this.index = true;
 	}
@@ -61,8 +63,9 @@ public class Retriever {
 		String topicsFilePath = args[0];
 		String dbName = args[1];
 		String dataDir = args[2];
-		String index = args[3];
-		Retriever r = new Retriever(topicsFilePath,dbName,dataDir,index);
+		String outFile = args[3];
+		String index = args[4];
+		Retriever r = new Retriever(topicsFilePath,dbName,dataDir,outFile,index);
 		r.performRetrieval();
 	}
 	
@@ -80,35 +83,15 @@ public class Retriever {
 			indexer.initDB();//this line is only necessary if we are NOT indexing but just experimenting with queries
 		getCollection();
 		ArrayList<TrecQuery> queries = processQueryFile();
-		ArrayList<String> experiments = new ArrayList<String>();
-		
-		
-		experiments.add(0,"all_p_b_p_norm");
-		experiments.add(1,"all_p_b_p");
-		experiments.add(2,"d");
-		experiments.add(3,"all_p_norm");
-		experiments.add(4,"d_all_p_norm");
-		experiments.add(5,"p_f");
-		experiments.add(6,"p_f_norm");
-		experiments.add(7,"d_p_f");
-		experiments.add(8,"p_g");
-		experiments.add(9,"d_p_g");
-		experiments.add(10,"d_b_p_all_p");
-		experiments.add(11,"d_b_p_all_p_norm");
-		experiments.add(12,"all_p");
-		experiments.add(13,"d_b_p_p_f");
-		experiments.add(14,"d_b_p_p_g");
 	
 		
-		//for every query, run all experiments
-		for(int i=0;i<experiments.size();i++) {
-			String expId = experiments.get(i);
-			for(TrecQuery q : queries) {
-				q.fileToPrintTo = "/home/eleanor/exp_results/run_3/" + expId; //we set this too many times..
-				rankQuery(q, expId); //does this belong here?
-				q.cleanQuery();//reset slice and doc score maps (+ normalization flag) for next experiment
-			}
+	//for every query, run all experiments
+		
+		for(TrecQuery q : queries) {
+			System.out.println(q.getQueryContent());
+			rankQuery(q); 
 		}
+		
 		
 	}
 	
@@ -142,7 +125,7 @@ public class Retriever {
 	 * Once this process has been carried out for all queries, print the queries + document scores to a file
 	 * according to the format needed for trec_eval
 	 */
-	private static void rankQuery(TrecQuery currentQuery, String expId) throws IOException {
+	private static void rankQuery(TrecQuery currentQuery) throws IOException {
 		
 		//for all concepts in query centroid vector
 		for (Map.Entry<Integer, Double> entry : currentQuery.queryAsSlice.topConceptsVector.entrySet()) {
@@ -155,88 +138,16 @@ public class Retriever {
 				@SuppressWarnings("unchecked")
 				ArrayList<org.bson.Document> sliceList =  (ArrayList<org.bson.Document>) dbEntryForCurrentConcept.get("slices");
 				//for that concept, record document-query scores and slice-query scores
-				switch(expId) {
-				case "d" : 
-					docsOnly(sliceList, currentQuery, queryConceptScore);
-					break;
-				case "all_p_norm" :
-					allPassages(sliceList,currentQuery,queryConceptScore,true);
-					break;
-				case "d_all_p_norm":
-					docsOnly(sliceList, currentQuery, queryConceptScore);
-					allPassages(sliceList,currentQuery,queryConceptScore,true);
-					break;
-				case "p_f" :
-					filteredPassages(sliceList,currentQuery,queryConceptScore,false);
-					break;
-				case "p_f_norm":
-					filteredPassages(sliceList,currentQuery,queryConceptScore,true);
-					break;
-				case "d_p_f" :
-					docsOnly(sliceList, currentQuery, queryConceptScore);
-					filteredPassages(sliceList,currentQuery,queryConceptScore,false);
-					break;
-				case "p_g" :
-					passagesAtSetGranLevel(sliceList,currentQuery,queryConceptScore,3);
-					break;
-				case "d_p_g" :
-					docsOnly(sliceList, currentQuery, queryConceptScore);
-					passagesAtSetGranLevel(sliceList,currentQuery,queryConceptScore,3);
-					break;
-				case "d_b_p_all_p":
-					docsOnly(sliceList, currentQuery, queryConceptScore);
-					allPassages(sliceList,currentQuery,queryConceptScore,false);
-					break;
-				case "d_b_p_all_p_norm":
-					docsOnly(sliceList, currentQuery, queryConceptScore);
-					allPassages(sliceList,currentQuery,queryConceptScore,true);
-					break;
-				case "all_p":
-					allPassages(sliceList,currentQuery,queryConceptScore,false);
-					break;
-				case "d_b_p_p_f":
-					docsOnly(sliceList, currentQuery, queryConceptScore);
-					filteredPassages(sliceList,currentQuery,queryConceptScore,false);
-					break;
-				case "all_p_b_p_norm":
-					allPassages(sliceList,currentQuery,queryConceptScore,true);
-					break;
-				case "all_p_b_p":
-					allPassages(sliceList,currentQuery,queryConceptScore,false);
-					break;
-				case "d_b_p_p_g" :
-					docsOnly(sliceList, currentQuery, queryConceptScore);
-					passagesAtSetGranLevel(sliceList,currentQuery,queryConceptScore,6);
-					break;
-				}
+				allPassages(sliceList,currentQuery,queryConceptScore,true);
 			}
 		}
 		
+		
 		//once we've dealt with all concepts in the query vector, we can calculate the final scores and 
 		//print the scores for each doc
-		//this will print to a file with its experiment id as the filename 
-		switch(expId) {
-		case "all_p_norm":
-		case "d_all_p_norm":
-		case "p_f" :
-		case "p_f_norm" :
-		case "d_p_f" :
-		case "p_g" :
-		case "d_p_g" :
-		case "all_p":
-			currentQuery.rankBySumOfPassages();
-			break;
-		case "d_b_p_all_p" :
-		case "d_b_p_all_p_norm" :
-		case "d_b_p_p_f" :
-		case "all_p_b_p_norm":
-		case "all_p_b_p":
-		case "d_b_p_p_g":
-			currentQuery.addBestSliceToMap();
-			break;
-		}
+		currentQuery.rankBySumOfPassages();
 		
-		currentQuery.printDocAssociationScoresForQueryToFile();
+		currentQuery.printDocAssociationScoresForQueryToFile(outFile);
 	}
 	
 	
@@ -248,13 +159,6 @@ public class Retriever {
 	 * @param currentQuery
 	 * @param queryConceptScore
 	 */
-	private static void docsOnly(ArrayList<org.bson.Document> sliceList, TrecQuery currentQuery, double queryConceptScore) {
-		for (org.bson.Document slice : sliceList) {
-			String idEntry = (String) slice.get("id");
-			Double scoreEntry = (Double) slice.get("score");
-			currentQuery.docsOnly(idEntry,scoreEntry,queryConceptScore);
-		}
-	}
 	
 	private static void allPassages(ArrayList<org.bson.Document> sliceList, TrecQuery currentQuery, double queryConceptScore, boolean norm) {
 		for (org.bson.Document slice : sliceList) {
@@ -279,45 +183,5 @@ public class Retriever {
 		}
 	}
 	
-
-	private static void filteredPassages(ArrayList<org.bson.Document> sliceList, TrecQuery currentQuery, double queryConceptScore, boolean norm) {
-		for (org.bson.Document slice : sliceList) {
-			   String idEntry = (String) slice.get("id");
-			   Double scoreEntry = (Double) slice.get("score");
-			   int numOfSlices = 0;
-			   int sizeOfDoc = 0; //in sentences
-			   int sizeOfSlice =0;
-			   if(!idEntry.contains("DOC")) {
-				   numOfSlices = (Integer) slice.get("currentNumberOfSlices");
-				   sizeOfDoc = (Integer) slice.get("doc_size");
-				   sizeOfSlice = (Integer) slice.get("size");
-			   }
-			   DBSlice sliceEntry = new DBSlice(idEntry,scoreEntry,numOfSlices,sizeOfDoc,sizeOfSlice);
-			   if(norm) {
-				   //is this the correct method of normalization?
-				   currentQuery.normalizePassages();
-				   currentQuery.passagesAtMultipleGranLevels(sliceEntry,queryConceptScore);
-			   }
-			   else 
-				   currentQuery.passagesAtMultipleGranLevels(sliceEntry,queryConceptScore);
-		}
-	}
-	
-	private static void passagesAtSetGranLevel(ArrayList<org.bson.Document> sliceList, TrecQuery currentQuery, double queryConceptScore, int granLevel) {
-		for (org.bson.Document slice : sliceList) {
-			   String idEntry = (String) slice.get("id");
-			   Double scoreEntry = (Double) slice.get("score");
-			   int numOfSlices = 0;
-			   int sizeOfDoc = 0; //in sentences
-			   int sizeOfSlice =0;
-			   if(!idEntry.contains("DOC")) {
-				   numOfSlices = (Integer) slice.get("currentNumberOfSlices");
-				   sizeOfDoc = (Integer) slice.get("doc_size");   
-				   sizeOfSlice = (Integer) slice.get("size");
-			   }
-			   DBSlice sliceEntry = new DBSlice(idEntry,scoreEntry,numOfSlices,sizeOfDoc,sizeOfSlice);
-			   currentQuery.passagesAtSetGranLevel(sliceEntry,queryConceptScore,granLevel);
-		}
-	}
 
 }

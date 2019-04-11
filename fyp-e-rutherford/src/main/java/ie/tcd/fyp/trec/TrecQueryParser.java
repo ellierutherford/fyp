@@ -57,7 +57,7 @@ public class TrecQueryParser {
 			else if(currentLine.contains("<desc>")) {
 				while(!currentLine.contains("<narr>")) {
 					if(!currentLine.contains("<desc>"))
-						description += currentLine;
+						description += " "+currentLine ;
 					currentLine = reader.readLine();
 					
 				}
@@ -65,7 +65,7 @@ public class TrecQueryParser {
 			else if(currentLine.contains("<narr>")) {
 				while(!currentLine.contains("</top>")) {
 					if(!currentLine.contains("<narr>"))
-						narrative += currentLine;
+						narrative += " "+currentLine;
 					currentLine = reader.readLine();
 					
 				}
